@@ -24,6 +24,8 @@ Antes de comecar, confira que a sua maquina atende:
 Se o `echo $DISPLAY` vier vazio, o tutorial nao vai funcionar: nao ha servidor
 grafico para receber a janela.
 
+Se os comandos do Docker nao responderem, siga a **Parte 0** antes de continuar.
+
 Testado em: Ubuntu 22.04 (sessao Wayland com XWayland), Docker 29, ROS 2 Humble.
 
 ---
@@ -39,6 +41,114 @@ Parte 2):
 4. Em outro terminal: `docker exec -it turtlesim /ros_entrypoint.sh ros2 run turtlesim turtle_teleop_key`
 
 A Parte 1 e opcional e a Parte 2 explica cada decisao do caminho acima.
+Se voce ainda nao tem o Docker instalado, comece pela Parte 0.
+
+---
+
+## Parte 0 - Instalar o Docker no Ubuntu
+
+Pule esta parte se o comando abaixo ja responder com uma versao:
+
+```bash
+docker --version
+```
+
+Fonte oficial: https://docs.docker.com/engine/install/ubuntu/
+
+**Atencao:** nao instale o Docker pelo pacote `docker.io` dos repositorios do
+Ubuntu. Ele e uma versao antiga e **nao inclui o `docker compose`**, que este
+projeto usa. O procedimento abaixo instala a versao oficial da Docker Inc.
+
+### 0.1 Remover versoes antigas e pacotes conflitantes
+
+```bash
+sudo apt remove docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc
+```
+
+E normal o `apt` dizer que alguns desses pacotes nao estao instalados. Isso nao
+e erro.
+
+### 0.2 Adicionar o repositorio oficial do Docker
+
+Este bloco baixa a chave GPG da Docker e cadastra o repositorio no `apt`. Sem
+ele, o `apt` nao conhece os pacotes e o passo 0.3 falha com
+"Impossivel encontrar o pacote".
+
+```bash
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+
+Agora crie o arquivo do repositorio:
+
+```bash
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+sudo apt update
+```
+
+Os trechos `$( ... )` sao preenchidos automaticamente com a versao do seu
+Ubuntu e a arquitetura do seu processador. Nao substitua nada a mao.
+
+### 0.3 Instalar o Docker
+
+```bash
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+O `docker-compose-plugin` e o que fornece o comando `docker compose` (com
+espaco). O antigo `docker-compose` (com hifen) nao e usado neste projeto.
+
+### 0.4 Testar
+
+```bash
+sudo docker run hello-world
+```
+
+Se aparecer a mensagem "Hello from Docker!", a instalacao funcionou.
+
+### 0.5 Usar o Docker sem sudo
+
+Por padrao, so o root usa o Docker. Para rodar os comandos deste tutorial sem
+`sudo`:
+
+```bash
+sudo groupadd docker          # pode dizer que o grupo ja existe, tudo bem
+sudo usermod -aG docker $USER
+newgrp docker                 # ou faca logout e login
+```
+
+Teste de novo, agora sem `sudo`:
+
+```bash
+docker run hello-world
+```
+
+> **Nota de seguranca:** estar no grupo `docker` equivale a ter privilegio de
+> root na maquina, porque quem controla o Docker pode montar qualquer diretorio
+> do sistema dentro de um container. E o procedimento recomendado pela propria
+> documentacao para uma estacao de trabalho pessoal, mas vale saber o que
+> significa.
+
+### 0.6 Conferir que esta tudo certo
+
+```bash
+docker --version
+docker compose version
+```
+
+Os dois precisam responder. Se o segundo falhar, o `docker-compose-plugin` nao
+foi instalado.
 
 ---
 
@@ -479,6 +589,8 @@ docker compose down --remove-orphans
 
 ## Referencias
 
+- Instalacao do Docker no Ubuntu: https://docs.docker.com/engine/install/ubuntu/
+- Usar o Docker sem sudo: https://docs.docker.com/engine/install/linux-postinstall/
 - Instalacao do ROS 2: https://www.ros.org/blog/getting-started/
 - Tutorial oficial do turtlesim: "Tutorials > Beginner: CLI tools > Using
   turtlesim, ros2, and rqt" na documentacao do ROS 2
