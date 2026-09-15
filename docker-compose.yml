@@ -1,0 +1,46 @@
+# Executa o turtlesim (ROS 2) dentro de um container, exibindo a janela
+# no servidor grafico do host via X11.
+#
+# Valores especificos da maquina - confira antes de subir:
+#   id -u ; id -g        -> devem bater com o "user:" abaixo
+#   echo $DISPLAY        -> precisa estar definido (ex: :0)
+#   ls /tmp/.X11-unix/   -> o socket do X precisa existir
+#
+# Uso:  docker compose up      (encerrar com Ctrl+C)
+
+services:
+  turtlesim:
+    # Imagem oficial da Open Source Robotics Foundation.
+    # A tag "-desktop" e a que inclui o pacote turtlesim.
+    # Para ROS 2 Jazzy (Ubuntu 24.04) troque apenas esta linha por:
+    #   image: osrf/ros:jazzy-desktop
+    image: osrf/ros:humble-desktop
+    container_name: turtlesim
+
+    # Roda o container com o mesmo UID/GID do usuario do host, para que o
+    # servidor X aceite a conexao pela regra SI:localuser que ja existe
+    # (dispensa afrouxar o acesso com "xhost +local:docker").
+    user: "1000:1000"
+
+    environment:
+      # Sem "=valor", o Compose herda o valor do shell que executou o comando.
+      - "DISPLAY"
+      # Desativa a extensao MIT-SHM do X11, que nao funciona entre container
+      # e host e faz aplicacoes Qt travarem ou desenharem lixo.
+      - "QT_X11_NO_MITSHM=1"
+      # O /etc/passwd montado diz que o home do UID 1000 e /home/bruno, que
+      # nao existe dentro do container. Sem isto o ROS 2 aborta ao tentar
+      # criar /home/bruno/.ros/log. O /tmp existe e e gravavel.
+      - "HOME=/tmp"
+
+    volumes:
+      # Socket do servidor X: e por ele que a janela chega na sua tela.
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Permitem resolver o UID 1000 para um usuario com nome dentro do
+      # container. Somente leitura.
+      - /etc/group:/etc/group:ro
+      - /etc/passwd:/etc/passwd:ro
+
+    # Substitui o CMD padrao da imagem (bash). O ENTRYPOINT da imagem
+    # (/ros_entrypoint.sh) ja faz o source do setup.bash antes de executar.
+    command: ros2 run turtlesim turtlesim_node
